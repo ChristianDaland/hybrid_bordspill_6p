@@ -7,16 +7,16 @@
     <script src="/socket.io/socket.io.js"></script>
     <style>
         body { background: #111; color: white; font-family: sans-serif; text-align: center; padding: 30px; }
-        input[type=range] { width: 100%; margin-top: 40px; height: 40px; }
+        input[type=range] { width: 100%; margin-top: 50px; height: 50px; }
         .slot-info { font-size: 24px; color: #00ffcc; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <h2>Din Kontroll</h2>
+    <h2>Målvakt-kontroll</h2>
     <div class="slot-info" id="slotText">Kobler til...</div>
 
     <div style="margin-top: 50px;">
-        <label for="slider">Beveg planke:</label><br>
+        <label for="slider">Skyv for å flytte planke:</label><br>
         <input type="range" id="slider" min="0" max="100" value="50">
     </div>
 
@@ -26,7 +26,7 @@
         const slotText = document.getElementById('slotText');
 
         socket.on('assigned-slot', (slot) => {
-            slotText.innerText = `Du er spiller på plass ${slot + 1}`;
+            slotText.innerText = `Du vokter sone ${slot + 1}`;
         });
 
         socket.on('full', () => {
@@ -35,7 +35,7 @@
         });
 
         slider.addEventListener('input', (e) => {
-            socket.emit('move', { pos: e.target.value });
+            socket.emit('move', { pos: parseInt(e.target.value) });
         });
     </script>
 </body>

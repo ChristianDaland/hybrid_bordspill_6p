@@ -8,7 +8,7 @@ const io = new Server(server);
 
 app.use(express.static('public'));
 
-let players = {}; // id -> { id, slot, score, x, y }
+let players = {}; // id -> { id, slot, score, pos }
 let puck = {
     x: 400,
     y: 300,
@@ -17,17 +17,17 @@ let puck = {
     radius: 12
 };
 
-// 6 plasser: 
+// 6 plasser:
 // 0: Venstre kortside
-// 1: Langside topp (venstre del)
-// 2: Langside topp (høyre del)
+// 1: Langside topp (venstre halvdel)
+// 2: Langside topp (høyre halvdel)
 // 3: Høyre kortside
-// 4: Langside bunn (høyre del)
-// 5: Langside bunn (venstre del)
+// 4: Langside bunn (høyre halvdel)
+// 5: Langside bunn (venstre halvdel)
 let availableSlots = [0, 1, 2, 3, 4, 5];
 
 io.on('connection', (socket) => {
-    console.log('En spiller koblet til:', socket.id);
+    console.log('Spiller koblet til:', socket.id);
 
     if (availableSlots.length > 0) {
         let slot = availableSlots.shift();
@@ -41,7 +41,7 @@ io.on('connection', (socket) => {
 
     socket.on('move', (data) => {
         if (players[socket.id]) {
-            players[socket.id].pos = data.pos; // 0 til 100 langs sin vegg
+            players[socket.id].pos = data.pos; // 0 til 100
         }
     });
 
@@ -56,14 +56,22 @@ io.on('connection', (socket) => {
     });
 });
 
-// Enkel spill-loop for puck-fysikk
+// Spill-loop med enkel kollisjon
 setInterval(() => {
     puck.x += puck.vx;
     puck.y += puck.vy;
 
-    // Enkel veggkollisjon (banen er f.eks. 800x600)
-    if (puck.x < 15 || puck.x > 785) puck.vx *= -1;
-    if (puck.y < 15 || puck.y > 585) puck.vy *= -1;
+    // Standard veggkollisjon (800x600 bane, ramme fra x:50 til 750, y:50 til 550)
+    const minX = 60, maxX = 740, minY = 60, maxY = 540;
+
+    if (puck.x < minX || puck.x > maxX) {
+        puck.vx *= -1;
+        puck.x = Math.max(minX, Math.min(maxX, puck.x));
+    }
+    if (puck.y < minY || puck.y > maxY) {
+        puck.vy *= -1;
+        puck.y = Math.max(minY, Math.min(maxY, puck.y));
+    }
 
     io.emit('state', { players, puck });
 }, 1000 / 60);

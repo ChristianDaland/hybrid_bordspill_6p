@@ -36,6 +36,7 @@
         });
 
         let gameState = { players: {}, puck: { x: 400, y: 300, radius: 12 } };
+        const colors = ["#ff4444", "#ffbb33", "#00C851", "#33b5e5", "#aa66cc", "#ffbb33"];
 
         socket.on('state', (state) => {
             gameState = state;
@@ -43,38 +44,74 @@
         });
 
         function updateScoreboard() {
-            let html = "<h3>Poengtavle:</h3><ul>";
+            let html = "<h3>Spillere & Poeng:</h3><ul>";
             for (let id in gameState.players) {
                 let p = gameState.players[id];
-                html += `<li>Plass ${p.slot + 1}: ${p.score} poeng</li>`;
+                html > `<li>Spiller ${p.slot + 1}: ${p.score}p</li>`;
             }
-            html += "</ul>";
-            document.getElementById('scoreboard').innerHTML = html;
+            document.getElementById('scoreboard').innerHTML = html || "Ingen spillere tilkoblet";
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Tegn rektangulær bane
-            ctx.strokeStyle = "#666";
-            ctx.lineWidth = 6;
-            ctx.strokeRect(20, 20, 760, 560);
+            // Ytre ramme for banen
+            const x1 = 60, x2 = 740, y1 = 60, y2 = 540;
+            ctx.strokeStyle = "#444";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-            // Tegn målområder / soner for de 6 spillerne
-            // Venstre kortside (Spiller 0)
-            ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
-            ctx.fillRect(20, 20, 15, 560);
+            // Tegn spillere basert på deres plass (0 til 5)
+            for (let id in gameState.players) {
+                let p = gameState.players[id];
+                ctx.fillStyle = colors[p.slot % colors.length];
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 2;
 
-            // Langside topp (Spiller 1 og 2)
-            ctx.fillRect(35, 20, 365, 15);
-            ctx.fillRect(400, 20, 365, 15);
+                let pWidth = 80;
+                let pHeight = 16;
+                let posRatio = p.pos / 100;
 
-            // Høyre kortside (Spiller 3)
-            ctx.fillRect(765, 20, 15, 560);
+                let px = 0, py = 0;
 
-            // Langside bunn (Spiller 4 og 5)
-            ctx.fillRect(400, 565, 365, 15);
-            ctx.fillRect(35, 565, 365, 15);
+                if (p.slot === 0) {
+                    // Venstre kortside
+                    py = y1 + posRatio * (y2 - y1 - pWidth);
+                    px = x1 - 10;
+                    ctx.fillRect(px, py, pHeight, pWidth);
+                    ctx.strokeRect(px, py, pHeight, pWidth);
+                } else if (p.slot === 1) {
+                    // Langside topp venstre
+                    px = x1 + posRatio * ((x2 - x1) / 2 - pWidth);
+                    py = y1 - 10;
+                    ctx.fillRect(px, py, pWidth, pHeight);
+                    ctx.strokeRect(px, py, pWidth, pHeight);
+                } else if (p.slot === 2) {
+                    // Langside topp høyre
+                    px = x1 + (x2 - x1) / 2 + posRatio * ((x2 - x1) / 2 - pWidth);
+                    py = y1 - 10;
+                    ctx.fillRect(px, py, pWidth, pHeight);
+                    ctx.strokeRect(px, py, pWidth, pHeight);
+                } else if (p.slot === 3) {
+                    // Høyre kortside
+                    py = y1 + posRatio * (y2 - y1 - pWidth);
+                    px = x2 - 6;
+                    ctx.fillRect(px, py, pHeight, pWidth);
+                    ctx.strokeRect(px, py, pHeight, pWidth);
+                } else if (p.slot === 4) {
+                    // Langside bunn høyre
+                    px = x1 + (x2 - x1) / 2 + posRatio * ((x2 - x1) / 2 - pWidth);
+                    py = y2 - 6;
+                    ctx.fillRect(px, py, pWidth, pHeight);
+                    ctx.strokeRect(px, py, pWidth, pHeight);
+                } else if (p.slot === 5) {
+                    // Langside bunn venstre
+                    px = x1 + posRatio * ((x2 - x1) / 2 - pWidth);
+                    py = y2 - 6;
+                    ctx.fillRect(px, py, pWidth, pHeight);
+                    ctx.strokeRect(px, py, pWidth, pHeight);
+                }
+            }
 
             // Tegn puck
             ctx.beginPath();
