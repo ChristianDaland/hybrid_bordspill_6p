@@ -108,7 +108,8 @@ setInterval(() => {
         let goalStartY = 300 - goalSizeHalf; 
         let goalEndY = 300 + goalSizeHalf;
 
-        // Sjekk mål for hver sone
+        // Sjekk mål for hver sone uavhengig av om spiller er tilstede, 
+        // slik at målet alltid registreres og gir poeng til spilleren i sonen.
         for (let slot = 0; slot < 6; slot++) {
             let activePlayer = null;
             for (let id in players) {
@@ -120,14 +121,14 @@ setInterval(() => {
 
             if (slot === 0) {
                 // Venstre mål
-                if (puck.x < x1 && puck.y >= goalStartY && puck.y <= goalEndY) {
+                if (puck.x <= x1 && puck.y >= goalStartY && puck.y <= goalEndY) {
                     if (activePlayer) activePlayer.score -= 1;
                     goalScored = true;
                     break;
                 }
             } else if (slot === 3) {
                 // Høyre mål
-                if (puck.x > x2 && puck.y >= goalStartY && puck.y <= goalEndY) {
+                if (puck.x >= x2 && puck.y >= goalStartY && puck.y <= goalEndY) {
                     if (activePlayer) activePlayer.score -= 1;
                     goalScored = true;
                     break;
@@ -136,7 +137,7 @@ setInterval(() => {
                 // Toppmål (slot 1 og 2)
                 let goalStartX = (slot === 1 ? x1 : x1 + sectionWidth) + sectionWidth/2 - goalSizeHalf;
                 let goalEndX = goalStartX + (goalSizeHalf * 2);
-                if (puck.y < y1 && puck.x >= goalStartX && puck.x <= goalEndX) {
+                if (puck.y <= y1 && puck.x >= goalStartX && puck.x <= goalEndX) {
                     if (activePlayer) activePlayer.score -= 1;
                     goalScored = true;
                     break;
@@ -145,20 +146,10 @@ setInterval(() => {
                 // Bunnmål (slot 4 og 5)
                 let goalStartX = (slot === 5 ? x1 : x1 + sectionWidth) + sectionWidth/2 - goalSizeHalf;
                 let goalEndX = goalStartX + (goalSizeHalf * 2);
-                if (puck.y > y2 && puck.x >= goalStartX && puck.x <= goalEndX) {
+                if (puck.y >= y2 && puck.x >= goalStartX && puck.x <= goalEndX) {
                     if (activePlayer) activePlayer.score -= 1;
                     goalScored = true;
                     break;
-                }
-            }
-
-            // Standard vegger der det IKKE er mål
-            if (!activePlayer) {
-                if (slot === 0 && puck.x - puck.radius <= x1 && (puck.y < goalStartY || puck.y > goalEndY)) { 
-                    puck.vx *= -1; puck.x = x1 + puck.radius; 
-                }
-                else if (slot === 3 && puck.x + puck.radius >= x2 && (puck.y < goalStartY || puck.y > goalEndY)) { 
-                    puck.vx *= -1; puck.x = x2 - puck.radius; 
                 }
             }
         }
@@ -166,21 +157,58 @@ setInterval(() => {
         if (goalScored) {
             resetPuck();
         } else {
-            // Generelle veggebegrensninger for å hindre at ballen låser seg utenfor banen
-            if (puck.x - puck.radius < x1) {
-                puck.vx *= -1;
-                puck.x = x1 + puck.radius;
-            } else if (puck.x + puck.radius > x2) {
-                puck.vx *= -1;
-                puck.x = x2 - puck.radius;
+            // Veggkollisjoner (der det ikke er mål åpning)
+            if (puck.x <= x1) {
+                if (puck.y >= goalStartY && puck.y <= goalEndY) {
+                    // Mål for slot 0 hvis den passerte helt ut
+                    let activePlayer = Object.values(players).find(p => p.slot === 0);
+                    if (activePlayer) activePlayer.score -= 1;
+                    resetPuck();
+                } else {
+                    puck.vx *= -1;
+                    puck.x = x1 + puck.radius;
+                }
+            } else if (puck.x >= x2) {
+                if (puck.y >= goalStartY && puck.y <= goalEndY) {
+                    let activePlayer = Object.values(players).find(p => p.slot === 3);
+                    if (activePlayer) activePlayer.score -= 1;
+                    resetPuck();
+                } else {
+                    puck.vx *= -1;
+                    puck.x = x2 - puck.radius;
+                }
             }
 
-            if (puck.y - puck.radius < y1) {
-                puck.vy *= -1;
-                puck.y = y1 + puck.radius;
-            } else if (puck.y + puck.radius > y2) {
-                puck.vy *= -1;
-                puck.y = y2 - puck.radius;
+            if (puck.y <= y1) {
+                let startX1 = x1 + sectionWidth*0.25 - goalSizeHalf;
+                let endX1 = startX1 + goalSizeHalf*2;
+                let startX2 = x1 + sectionWidth*1.25 - goalSizeHalf;
+                let endX2 = startX2 + goalSizeHalf*2;
+
+                if ((puck.x >= startX1 && puck.x <= endX1) || (puck.x >= startX2 && puck.x <= endX2)) {
+                    let targetSlot = (puck.x >= startX1 && puck.x <= endX1) ? 1 : 2;
+                    let activePlayer = Object.values(players).find(p => p.slot === targetSlot);
+                    if (activePlayer) activePlayer.score -= 1;
+                    resetPuck();
+                } else {
+                    puck.vy *= -1;
+                    puck.y = y1 + puck.radius;
+                }
+            } else if (puck.y >= y2) {
+                let startX1 = x1 + sectionWidth*0.25 - goalSizeHalf;
+                let endX1 = startX1 + goalSizeHalf*2;
+                let startX2 = x1 + sectionWidth*1.25 - goalSizeHalf;
+                let endX2 = startX2 + goalSizeHalf*2;
+
+                if ((puck.x >= startX1 && puck.x <= endX1) || (puck.x >= startX2 && puck.x <= endX2)) {
+                    let targetSlot = (puck.x >= startX1 && puck.x <= endX1) ? 5 : 4;
+                    let activePlayer = Object.values(players).find(p => p.slot === targetSlot);
+                    if (activePlayer) activePlayer.score -= 1;
+                    resetPuck();
+                } else {
+                    puck.vy *= -1;
+                    puck.y = y2 - puck.radius;
+                }
             }
         }
 
