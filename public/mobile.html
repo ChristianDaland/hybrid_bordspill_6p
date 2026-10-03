@@ -8,6 +8,10 @@
     <style>
         body { background: #111; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
         .slot-info { font-size: 22px; color: #00ffcc; margin-bottom: 20px; font-weight: bold; }
+        #name-screen { display: flex; flex-direction: column; gap: 15px; width: 80%; max-width: 300px; }
+        #name-screen input { padding: 12px; font-size: 16px; border-radius: 6px; border: 1px solid #444; background: #222; color: white; text-align: center; }
+        #name-screen button { padding: 12px; font-size: 16px; border-radius: 6px; border: none; background: #00C851; color: white; font-weight: bold; cursor: pointer; }
+        #joystick-screen { display: none; flex-direction: column; align-items: center; }
         #joystick-container {
             width: 260px;
             height: 260px;
@@ -33,15 +37,26 @@
     </style>
 </head>
 <body>
-    <div class="slot-info" id="slotText">Kobler til...</div>
-
-    <div id="joystick-container">
-        <div id="stick"></div>
+    <div id="name-screen">
+        <h2>Skriv inn ditt navn</h2>
+        <input type="text" id="playerNameInput" placeholder="Ditt navn..." maxlength="15">
+        <button id="joinBtn">Bli med i spillet</button>
     </div>
-    <p>Dra prikken for å styre målvakten og gi fart til ballen!</p>
+
+    <div id="joystick-screen">
+        <div class="slot-info" id="slotText">Kobler til...</div>
+        <div id="joystick-container">
+            <div id="stick"></div>
+        </div>
+        <p>Dra prikken for å styre målvakten og gi fart til ballen!</p>
+    </div>
 
     <script>
         const socket = io();
+        const nameScreen = document.getElementById('name-screen');
+        const joystickScreen = document.getElementById('joystick-screen');
+        const playerNameInput = document.getElementById('playerNameInput');
+        const joinBtn = document.getElementById('joinBtn');
         const slotText = document.getElementById('slotText');
         const container = document.getElementById('joystick-container');
         const stick = document.getElementById('stick');
@@ -49,15 +64,21 @@
         let assignedSlot = null;
         let isDragging = false;
         let center = { x: 130, y: 130 };
-        let maxRadius = 90; // Maks avstand fra senter
-        let stickPos = { x: 0, y: 0 }; // Verdi mellom -1 og 1
+        let maxRadius = 90;
+        let stickPos = { x: 0, y: 0 };
+
+        const colors = ["#ff4444", "#ffbb33", "#aa66cc", "#33b5e5", "#00C851", "#ff8800"];
+
+        joinBtn.addEventListener('click', () => {
+            let name = playerNameInput.value.trim() || "Spiller";
+            socket.emit('set-name', name);
+            nameScreen.style.display = 'none';
+            joystickScreen.style.display = 'flex';
+        });
 
         socket.on('assigned-slot', (slot) => {
             assignedSlot = slot;
-            slotText.innerText = `Du vokter sone ${slot + 1}`;
-            
-            // Sett farge på stikken basert på spiller-slot
-            const colors = ["#ff4444", "#ffbb33", "#00C851", "#33b5e5", "#aa66cc", "#ffbb33"];
+            slotText.innerText = `Sone ${slot + 1}`;
             stick.style.background = colors[slot % colors.length];
         });
 
@@ -78,7 +99,6 @@
 
             stick.style.transform = `translate(${dx}px, ${dy}px)`;
 
-            // Normaliser til -1 til 1
             stickPos.x = dx / maxRadius;
             stickPos.y = dy / maxRadius;
 
