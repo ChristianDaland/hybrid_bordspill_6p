@@ -48,7 +48,7 @@
 
         socket.on('assigned-slot', (slot) => {
             mySlot = slot;
-            document.getElementById('status সন্ত্রাসী' || 'status').innerText = `Spiller ${slot + 1} - Klar!`;
+            document.getElementById('status').innerText = `Spiller ${slot + 1} - Klar!`;
         });
 
         socket.on('full', () => {
@@ -61,7 +61,6 @@
         const stick = document.getElementById('stick');
         let dragging = false;
         
-        // Prikkens senterposisjon i containeren
         const centerOffset = 110; 
         const stickRadius = 40;
         const maxDist = 70;
@@ -71,7 +70,6 @@
             stick.style.top = `${y - stickRadius}px`;
         }
 
-        // Sett startposisjon i midten
         updateStickPosition(centerOffset, centerOffset);
 
         function handleTouch(clientX, clientY) {
@@ -90,7 +88,6 @@
 
             updateStickPosition(centerOffset + dx, centerOffset + dy);
 
-            // Beregn hastighet basert på avstand fra sentrum
             let vx = (dx / maxDist) * 6; 
             let vy = (dy / maxDist) * 6;
 
@@ -110,7 +107,6 @@
             socket.emit('move', { vx: 0, vy: 0 });
         });
 
-        // Mus-støtte for testing på PC
         stick.addEventListener('mousedown', (e) => { dragging = true; });
         window.addEventListener('mousemove', (e) => {
             if (!dragging) return;
