@@ -9,10 +9,12 @@
         body { margin: 0; background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
         #login-screen { display: flex; flex-direction: column; align-items: center; gap: 15px; }
         input { padding: 12px; font-size: 16px; border-radius: 6px; border: none; text-align: center; width: 220px; }
-        button { padding: 12px 24px; font-size: 16px; background: #00ffcc; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        #joystick-container { display: none; position: relative; width: 250px; height: 250px; background: #222; border-radius: 50%; border: 4px solid #444; justify-content: center; align-items: center; margin-top: 20px; }
-        #stick { position: absolute; width: 80px; height: 80px; background: #00ffcc; border-radius: 50%; top: 85px; left: 85px; touch-action: none; box-shadow: 0 4px 15px rgba(0,255,204,0.4); }
-        #status { font-size: 18px; color: #aaa; margin-bottom: 10px; }
+        button { padding: 12px 24px; font-size: 16px; background: #00ffcc; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: #111; }
+        
+        #joystick-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
+        #joystick-container { position: relative; width: 220px; height: 220px; background: #222; border-radius: 50%; border: 4px solid #444; display: flex; justify-content: center; align-items: center; margin-top: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+        #stick { position: absolute; width: 80px; height: 80px; background: #00ffcc; border-radius: 50%; touch-action: none; box-shadow: 0 4px 15px rgba(0,255,204,0.4); }
+        #status { font-size: 20px; color: #00ffcc; font-weight: bold; margin-bottom: 10px; text-align: center; }
     </style>
 </head>
 <body>
@@ -23,8 +25,9 @@
         <button onclick="joinGame()">Start Spill</button>
     </div>
 
-    <div id="joystick-screen" style="display:none; flex-direction: column; align-items: center;">
-        <div id="status">Koble til...</div>
+    <div id="joystick-screen">
+        <div id="status">Kobler til...</div>
+        <p style="color: #aaa; font-size: 14px; margin: 0 0 20px 0;">Dra prikken for å styre spilleren</p>
         <div id="joystick-container">
             <div id="stick"></div>
         </div>
@@ -45,7 +48,7 @@
 
         socket.on('assigned-slot', (slot) => {
             mySlot = slot;
-            document.getElementById('status').innerText = `Spiller ${slot + 1} - Styr med kontrollen`;
+            document.getElementById('status সন্ত্রাসী' || 'status').innerText = `Spiller ${slot + 1} - Klar!`;
         });
 
         socket.on('full', () => {
@@ -57,25 +60,39 @@
         const container = document.getElementById('joystick-container');
         const stick = document.getElementById('stick');
         let dragging = false;
-        let center = { x: 125, y: 125 };
-        let maxDist = 85;
+        
+        // Prikkens senterposisjon i containeren
+        const centerOffset = 110; 
+        const stickRadius = 40;
+        const maxDist = 70;
+
+        function updateStickPosition(x, y) {
+            stick.style.left = `${x - stickRadius}px`;
+            stick.style.top = `${y - stickRadius}px`;
+        }
+
+        // Sett startposisjon i midten
+        updateStickPosition(centerOffset, centerOffset);
 
         function handleTouch(clientX, clientY) {
             const rect = container.getBoundingClientRect();
-            let x = clientX - rect.left - center.x;
-            let y = clientY - rect.top - center.y;
-            let dist = Math.sqrt(x * x + y * y);
+            let x = clientX - rect.left;
+            let y = clientY - rect.top;
+
+            let dx = x - centerOffset;
+            let dy = y - centerOffset;
+            let dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist > maxDist) {
-                x = (x / dist) * maxDist;
-                y = (y / dist) * maxDist;
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
             }
 
-            stick.style.transform = `translate(${x}px, ${y}px)`;
+            updateStickPosition(centerOffset + dx, centerOffset + dy);
 
-            // Beregn hastighet basert på hvor langt prikken er dratt (skalert ned til passe fart)
-            let vx = (x / maxDist) * 6; 
-            let vy = (y / maxDist) * 6;
+            // Beregn hastighet basert på avstand fra sentrum
+            let vx = (dx / maxDist) * 6; 
+            let vy = (dy / maxDist) * 6;
 
             socket.emit('move', { vx, vy });
         }
@@ -89,11 +106,11 @@
         window.addEventListener('touchend', () => {
             if (!dragging) return;
             dragging = false;
-            stick.style.transform = `translate(0px, 0px)`;
-            socket.emit('move', { vx: 0, vy: 0 }); // Stopp når man slipper
+            updateStickPosition(centerOffset, centerOffset);
+            socket.emit('move', { vx: 0, vy: 0 });
         });
 
-        // For testing med mus på PC hvis ønskelig
+        // Mus-støtte for testing på PC
         stick.addEventListener('mousedown', (e) => { dragging = true; });
         window.addEventListener('mousemove', (e) => {
             if (!dragging) return;
@@ -102,7 +119,7 @@
         window.addEventListener('mouseup', () => {
             if (!dragging) return;
             dragging = false;
-            stick.style.transform = `translate(0px, 0px)`;
+            updateStickPosition(centerOffset, centerOffset);
             socket.emit('move', { vx: 0, vy: 0 });
         });
     </script>
