@@ -105,6 +105,8 @@ setInterval(() => {
         }
 
         let goalScored = false;
+        let goalStartY = 300 - goalSizeHalf; 
+        let goalEndY = 300 + goalSizeHalf;
 
         // Sjekk mål for hver sone
         for (let slot = 0; slot < 6; slot++) {
@@ -115,10 +117,6 @@ setInterval(() => {
                     break;
                 }
             }
-
-            let goalStartY = 300 - goalSizeHalf; 
-            let goalEndY = 300 + goalSizeHalf;
-            let startXSlot = slot === 1 || slot === 5 ? x1 : x1 + sectionWidth;
 
             if (slot === 0) {
                 // Venstre mål
@@ -154,7 +152,7 @@ setInterval(() => {
                 }
             }
 
-            // Standard vegger der det IKKE er mål, eller om det er vegger ved siden av målet
+            // Standard vegger der det IKKE er mål
             if (!activePlayer) {
                 if (slot === 0 && puck.x - puck.radius <= x1 && (puck.y < goalStartY || puck.y > goalEndY)) { 
                     puck.vx *= -1; puck.x = x1 + puck.radius; 
@@ -168,11 +166,22 @@ setInterval(() => {
         if (goalScored) {
             resetPuck();
         } else {
-            // Veggkollisjoner for ytterkantene hvis ikke i mål
-            if (puck.x < x1) { puck.vx *= -1; puck.x = x1; }
-            if (puck.x > x2) { puck.vx *= -1; puck.x = x2; }
-            if (puck.y < y1) { puck.vy *= -1; puck.y = y1; }
-            if (puck.y > y2) { puck.vy *= -1; puck.y = y2; }
+            // Generelle veggebegrensninger for å hindre at ballen låser seg utenfor banen
+            if (puck.x - puck.radius < x1) {
+                puck.vx *= -1;
+                puck.x = x1 + puck.radius;
+            } else if (puck.x + puck.radius > x2) {
+                puck.vx *= -1;
+                puck.x = x2 - puck.radius;
+            }
+
+            if (puck.y - puck.radius < y1) {
+                puck.vy *= -1;
+                puck.y = y1 + puck.radius;
+            } else if (puck.y + puck.radius > y2) {
+                puck.vy *= -1;
+                puck.y = y2 - puck.radius;
+            }
         }
 
         // Kollisjon mellom spillere og puck
