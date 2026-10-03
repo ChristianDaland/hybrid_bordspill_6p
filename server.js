@@ -12,13 +12,11 @@ let players = {}; // id -> { id, slot, score, x, y, prevX, prevY, vx, vy, radius
 let puck = {
     x: 400,
     y: 300,
-    vx: 5,
-    vy: 3,
+    vx: 0,
+    vy: 0,
     radius: 12
 };
 
-// Prioritert rekkefølge: Sikrer at 2 spillere havner på motsatt side (1 og 4),
-// og at høyre kortside (slot 3) havner sist (nr. 6).
 const SLOT_PRIORITY = [1, 4, 5, 2, 0, 3];
 let availableSlots = [...SLOT_PRIORITY];
 
@@ -37,6 +35,11 @@ io.on('connection', (socket) => {
             radius: 20 
         };
         socket.emit('assigned-slot', slot);
+        
+        // Hvis dette er den første spilleren som kobler seg til, sett i gang pucken!
+        if (Object.keys(players).length === 1) {
+            resetPuck();
+        }
     } else {
         socket.emit('full');
     }
@@ -58,10 +61,18 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         if (players[socket.id]) {
             availableSlots.push(players[socket.id].slot);
-            // Sorter ledige plasser tilbake i henhold til prioritert rekkefølge
             availableSlots.sort((a, b) => SLOT_PRIORITY.indexOf(a) - SLOT_PRIORITY.indexOf(b));
             delete players[socket.id];
         }
+        
+        // Hvis alle spillere kobler seg fra, stopp pucken og nullstill hastighet
+        if (Object.keys(players).length === 0) {
+            puck.vx = 0;
+            puck.vy = 0;
+            puck.x = 400;
+            puck.y = 300;
+        }
+
         io.emit('state', { players, puck });
         console.log('Spiller koblet fra:', socket.id);
     });
@@ -69,10 +80,16 @@ io.on('connection', (socket) => {
 
 // Spill-loop med fysikk
 setInterval(() => {
+    // Ikke kjør fysikk eller tell poeng hvis det ikke er noen spillere tilkoblet
+    if (Object.keys(players).length === 0) {
+        io.emit('state', { players, puck });
+        return;
+    }
+
     puck.x += puck.vx;
     puck.y += puck.vy;
 
-    // Sørg for at pucken aldri stopper helt opp
+    // Sørg for at pucken aldri stopper helt opp når spillet er aktivt
     const minSpeed = 4;
     let currentSpeed = Math.sqrt(puck.vx * puck.vx + puck.vy * puck.vy);
     if (currentSpeed < minSpeed && currentSpeed > 0) {
