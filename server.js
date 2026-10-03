@@ -104,6 +104,8 @@ setInterval(() => {
             puck.vy = (puck.vy / currentSpeed) * minSpeed;
         }
 
+        let goalScored = false;
+
         // Sjekk mål for hver sone
         for (let slot = 0; slot < 6; slot++) {
             let activePlayer = null;
@@ -114,50 +116,63 @@ setInterval(() => {
                 }
             }
 
-            if (activePlayer) {
-                let goalStartY = 0, goalEndY = 0, goalStartX = 0, goalEndX = 0;
+            let goalStartY = 300 - goalSizeHalf; 
+            let goalEndY = 300 + goalSizeHalf;
+            let startXSlot = slot === 1 || slot === 5 ? x1 : x1 + sectionWidth;
 
-                if (slot === 0) {
-                    goalStartY = 300 - goalSizeHalf; goalEndY = 300 + goalSizeHalf;
-                    if (puck.x - puck.radius < x1 && puck.y >= goalStartY && puck.y <= goalEndY) {
-                        activePlayer.score -= 1;
-                        resetPuck();
-                    }
-                } else if (slot === 3) {
-                    goalStartY = 300 - goalSizeHalf; goalEndY = 300 + goalSizeHalf;
-                    if (puck.x + puck.radius > x2 && puck.y >= goalStartY && puck.y <= goalEndY) {
-                        activePlayer.score -= 1;
-                        resetPuck();
-                    }
-                } else if (slot === 1 || slot === 2) {
-                    let startX = slot === 1 ? x1 : x1 + sectionWidth;
-                    goalStartX = startX + sectionWidth/2 - goalSizeHalf; 
-                    goalEndX = startX + sectionWidth/2 + goalSizeHalf;
-                    if (puck.y - puck.radius < y1 && puck.x >= goalStartX && puck.x <= goalEndX) {
-                        activePlayer.score -= 1;
-                        resetPuck();
-                    }
-                } else if (slot === 4 || slot === 5) {
-                    let startX = slot === 5 ? x1 : x1 + sectionWidth;
-                    goalStartX = startX + sectionWidth/2 - goalSizeHalf; 
-                    goalEndX = startX + sectionWidth/2 + goalSizeHalf;
-                    if (puck.y + puck.radius > y2 && puck.x >= goalStartX && puck.x <= goalEndX) {
-                        activePlayer.score -= 1;
-                        resetPuck();
-                    }
+            if (slot === 0) {
+                // Venstre mål
+                if (puck.x < x1 && puck.y >= goalStartY && puck.y <= goalEndY) {
+                    if (activePlayer) activePlayer.score -= 1;
+                    goalScored = true;
+                    break;
                 }
-            } else {
-                if (slot === 0 && puck.x - puck.radius <= x1) { puck.vx *= -1; puck.x = x1 + puck.radius; }
-                else if (slot === 3 && puck.x + puck.radius >= x2) { puck.vx *= -1; puck.x = x2 - puck.radius; }
-                else if ((slot === 1 || slot === 2) && puck.y - puck.radius <= y1) {
-                    let startX = slot === 1 ? x1 : x1 + sectionWidth;
-                    if (puck.x >= startX && puck.x <= startX + sectionWidth) { puck.vy *= -1; puck.y = y1 + puck.radius; }
+            } else if (slot === 3) {
+                // Høyre mål
+                if (puck.x > x2 && puck.y >= goalStartY && puck.y <= goalEndY) {
+                    if (activePlayer) activePlayer.score -= 1;
+                    goalScored = true;
+                    break;
                 }
-                else if ((slot === 4 || slot === 5) && puck.y + puck.radius >= y2) {
-                    let startX = slot === 5 ? x1 : x1 + sectionWidth;
-                    if (puck.x >= startX && puck.x <= startX + sectionWidth) { puck.vy *= -1; puck.y = y2 - puck.radius; }
+            } else if (slot === 1 || slot === 2) {
+                // Toppmål (slot 1 og 2)
+                let goalStartX = (slot === 1 ? x1 : x1 + sectionWidth) + sectionWidth/2 - goalSizeHalf;
+                let goalEndX = goalStartX + (goalSizeHalf * 2);
+                if (puck.y < y1 && puck.x >= goalStartX && puck.x <= goalEndX) {
+                    if (activePlayer) activePlayer.score -= 1;
+                    goalScored = true;
+                    break;
+                }
+            } else if (slot === 4 || slot === 5) {
+                // Bunnmål (slot 4 og 5)
+                let goalStartX = (slot === 5 ? x1 : x1 + sectionWidth) + sectionWidth/2 - goalSizeHalf;
+                let goalEndX = goalStartX + (goalSizeHalf * 2);
+                if (puck.y > y2 && puck.x >= goalStartX && puck.x <= goalEndX) {
+                    if (activePlayer) activePlayer.score -= 1;
+                    goalScored = true;
+                    break;
                 }
             }
+
+            // Standard vegger der det IKKE er mål, eller om det er vegger ved siden av målet
+            if (!activePlayer) {
+                if (slot === 0 && puck.x - puck.radius <= x1 && (puck.y < goalStartY || puck.y > goalEndY)) { 
+                    puck.vx *= -1; puck.x = x1 + puck.radius; 
+                }
+                else if (slot === 3 && puck.x + puck.radius >= x2 && (puck.y < goalStartY || puck.y > goalEndY)) { 
+                    puck.vx *= -1; puck.x = x2 - puck.radius; 
+                }
+            }
+        }
+
+        if (goalScored) {
+            resetPuck();
+        } else {
+            // Veggkollisjoner for ytterkantene hvis ikke i mål
+            if (puck.x < x1) { puck.vx *= -1; puck.x = x1; }
+            if (puck.x > x2) { puck.vx *= -1; puck.x = x2; }
+            if (puck.y < y1) { puck.vy *= -1; puck.y = y1; }
+            if (puck.y > y2) { puck.vy *= -1; puck.y = y2; }
         }
 
         // Kollisjon mellom spillere og puck
@@ -181,11 +196,6 @@ setInterval(() => {
                 puck.vy = (puck.vy - 2 * dot * ny) * 1.1;
             }
         }
-
-        if (puck.x < x1) { puck.vx *= -1; puck.x = x1; }
-        if (puck.x > x2) { puck.vx *= -1; puck.x = x2; }
-        if (puck.y < y1) { puck.vy *= -1; puck.y = y1; }
-        if (puck.y > y2) { puck.vy *= -1; puck.y = y2; }
 
         io.emit('state', { players, puck });
     } catch (err) {
