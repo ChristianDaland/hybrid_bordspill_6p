@@ -12,8 +12,7 @@
         button { padding: 12px 24px; font-size: 16px; background: #00ffcc; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: #111; }
         
         #joystick-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; }
-        #joystick-container { position: relative; width: 220px; height: 220px; background: #222; border-radius: 50%; border: 4px solid #444; display: flex; justify-content: center; align-items: center; margin-top: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
-        #stick { position: absolute; width: 80px; height: 80px; background: #00ffcc; border-radius: 50%; touch-action: none; box-shadow: 0 4px 15px rgba(0,255,204,0.4); }
+        #joystick-container { position: relative; width: 260px; height: 260px; background: #222; border-radius: 50%; border: 4px solid #444; display: flex; justify-content: center; align-items: center; margin-top: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
         #status { font-size: 20px; color: #00ffcc; font-weight: bold; margin-bottom: 10px; text-align: center; }
     </style>
 </head>
@@ -27,10 +26,8 @@
 
     <div id="joystick-screen">
         <div id="status">Kobler til...</div>
-        <p style="color: #aaa; font-size: 14px; margin: 0 0 20px 0;">Dra prikken for å styre spilleren</p>
-        <div id="joystick-container">
-            <div id="stick"></div>
-        </div>
+        <p style="color: #aaa; font-size: 14px; margin: 0 0 20px 0;">Dra hvor som helst i sirkelen for å styre</p>
+        <div id="joystick-container"></div>
     </div>
 
     <script>
@@ -56,21 +53,12 @@
             location.reload();
         });
 
-        // Joystick logikk
+        // Berøringssone logikk (uten fast prikk)
         const container = document.getElementById('joystick-container');
-        const stick = document.getElementById('stick');
-        let dragging = false;
+        let touching = false;
         
-        const centerOffset = 110; 
-        const stickRadius = 40;
-        const maxDist = 70;
-
-        function updateStickPosition(x, y) {
-            stick.style.left = `${x - stickRadius}px`;
-            stick.style.top = `${y - stickRadius}px`;
-        }
-
-        updateStickPosition(centerOffset, centerOffset);
+        const centerOffset = 130; // Halvparten av 260px bredde/høyde
+        const maxDist = 100;
 
         function handleTouch(clientX, clientY) {
             const rect = container.getBoundingClientRect();
@@ -86,36 +74,45 @@
                 dy = (dy / dist) * maxDist;
             }
 
-            updateStickPosition(centerOffset + dx, centerOffset + dy);
-
+            // Beregn hastighet basert på hvor langt fra sentrum fingeren er
             let vx = (dx / maxDist) * 6; 
             let vy = (dy / maxDist) * 6;
 
             socket.emit('move', { vx, vy });
         }
 
-        stick.addEventListener('touchstart', (e) => { dragging = true; });
-        window.addEventListener('touchmove', (e) => {
-            if (!dragging) return;
+        container.addEventListener('touchstart', (e) => {
+            touching = true;
             let touch = e.touches[0];
             handleTouch(touch.clientX, touch.clientY);
         });
-        window.addEventListener('touchend', () => {
-            if (!dragging) return;
-            dragging = false;
-            updateStickPosition(centerOffset, centerOffset);
-            socket.emit('move', { vx: 0, vy: 0 });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!touching) return;
+            let touch = e.touches[0];
+            handleTouch(touch.clientX, touch.clientY);
         });
 
-        stick.addEventListener('mousedown', (e) => { dragging = true; });
-        window.addEventListener('mousemove', (e) => {
-            if (!dragging) return;
+        window.addEventListener('touchend', () => {
+            if (!touching) return;
+            touching = false;
+            socket.emit('move', { vx: 0, vy: 0 }); // Stopp når man slipper fingeren
+        });
+
+        // Mus-støtte for testing på PC
+        container.addEventListener('mousedown', (e) => {
+            touching = true;
             handleTouch(e.clientX, e.clientY);
         });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!touching) return;
+            handleTouch(e.clientX, e.clientY);
+        });
+
         window.addEventListener('mouseup', () => {
-            if (!dragging) return;
-            dragging = false;
-            updateStickPosition(centerOffset, centerOffset);
+            if (!touching) return;
+            touching = false;
             socket.emit('move', { vx: 0, vy: 0 });
         });
     </script>
