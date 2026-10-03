@@ -42,13 +42,11 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Motta hastighet/retning fra mobil-joysticken
     socket.on('move', (data) => {
         try {
             if (players[socket.id] && data) {
-                let p = players[socket.id];
-                p.vx = data.vx || 0;
-                p.vy = data.vy || 0;
+                players[socket.id].vx = data.vx || 0;
+                players[socket.id].vy = data.vy || 0;
             }
         } catch (err) {
             console.error('Feil i move:', err);
@@ -75,7 +73,7 @@ setInterval(() => {
         const sectionWidth = (x2 - x1) / 2;
         const goalSizeHalf = 55;
 
-        // Flytt spillere basert på hastighet fra mobilen
+        // 1. Flytt spillere basert på hastighet
         for (let id in players) {
             let p = players[id];
             if (!p) continue;
@@ -134,7 +132,7 @@ setInterval(() => {
                 } else if (slot === 1 || slot === 2) {
                     let startX = slot === 1 ? x1 : x1 + sectionWidth;
                     goalStartX = startX + sectionWidth/2 - goalSizeHalf; 
-                    goalEndX = startX + sectionWidth/2 + goalSize/2;
+                    goalEndX = startX + sectionWidth/2 + goalSizeHalf;
                     if (puck.y - puck.radius < y1 && puck.x >= goalStartX && puck.x <= goalEndX) {
                         activePlayer.score -= 1;
                         resetPuck();
@@ -142,14 +140,13 @@ setInterval(() => {
                 } else if (slot === 4 || slot === 5) {
                     let startX = slot === 5 ? x1 : x1 + sectionWidth;
                     goalStartX = startX + sectionWidth/2 - goalSizeHalf; 
-                    goalEndX = startX + sectionWidth/2 + goalSize/2;
+                    goalEndX = startX + sectionWidth/2 + goalSizeHalf;
                     if (puck.y + puck.radius > y2 && puck.x >= goalStartX && puck.x <= goalEndX) {
                         activePlayer.score -= 1;
                         resetPuck();
                     }
                 }
             } else {
-                // Solid vegg der det ikke er noen spiller
                 if (slot === 0 && puck.x - puck.radius <= x1) { puck.vx *= -1; puck.x = x1 + puck.radius; }
                 else if (slot === 3 && puck.x + puck.radius >= x2) { puck.vx *= -1; puck.x = x2 - puck.radius; }
                 else if ((slot === 1 || slot === 2) && puck.y - puck.radius <= y1) {
