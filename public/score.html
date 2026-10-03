@@ -34,7 +34,7 @@
 
     <script>
         const socket = io();
-        const colors = ["#ff4444", "#ffbb33", "#aa66cc", "#33b5e5", "#00C851",="#ff8800"];
+        const colors = ["#ff4444", "#ffbb33", "#aa66cc", "#33b5e5", "#00C851", "#ff8800"];
 
         new QRCode(document.getElementById("qrcode"), {
             text: `${window.location.origin}/mobile.html`,
@@ -47,7 +47,6 @@
         }
 
         function openArena() {
-            // Åpner selve spillbrettet (hovedsiden / roten) i en ny fane
             window.open('/', '_blank');
         }
 
