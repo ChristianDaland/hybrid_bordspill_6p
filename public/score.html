@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <title>Kamparena - Poengtavle</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { margin: 0; background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+        h1 { margin-bottom: 20px; color: #00ffcc; }
+        #qrcode { background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .score-box { background: #222; padding: 25px; border-radius: 12px; font-size: 20px; min-width: 320px; border: 2px solid #333; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        ul { padding-left: 20px; margin: 10px 0 0 0; text-align: left; }
+        li { margin-bottom: 8px; }
+        p { color: #aaa; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h1>6-Spillers Kamparena</h1>
+    <div id="qrcode"></div>
+    <p>Skann for å bli med på mobilen!</p>
+    <div class="score-box" id="scoreboard">Venter på spillere...</div>
+
+    <script>
+        const socket = io();
+        const colors = ["#ff4444", "#ffbb33", "#aa66cc", "#33b5e5", "#00C851", "#ff8800"];
+
+        new QRCode(document.getElementById("qrcode"), {
+            text: `${window.location.origin}/mobile.html`,
+            width: 180,
+            height: 180
+        });
+
+        socket.on('state', (state) => {
+            let html = "<b>Spillere & Poeng:</b><ul>";
+            let count = 0;
+            for (let id in state.players) {
+                let p = state.players[id];
+                html += `<li><b>${p.name}</b>: <span style="color:${colors[p.slot % colors.length]}">${p.score}p</span></li>`;
+                count++;
+            }
+            html += "</ul>";
+            document.getElementById('scoreboard').innerHTML = count > 0 ? html : "Ingen spillere tilkoblet";
+        });
+    </script>
+</body>
+</html>
