@@ -17,7 +17,10 @@ let puck = {
     radius: 12
 };
 
-let availableSlots = [0, 1, 2, 3, 4, 5];
+// Prioritert rekkefølge: Sikrer at 2 spillere havner på motsatt side (1 og 4),
+// og at høyre kortside (slot 3) havner sist (nr. 6).
+const SLOT_PRIORITY = [1, 4, 5, 2, 0, 3];
+let availableSlots = [...SLOT_PRIORITY];
 
 io.on('connection', (socket) => {
     console.log('Spiller koblet til:', socket.id);
@@ -55,7 +58,8 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         if (players[socket.id]) {
             availableSlots.push(players[socket.id].slot);
-            availableSlots.sort((a, b) => a - b);
+            // Sorter ledige plasser tilbake i henhold til prioritert rekkefølge
+            availableSlots.sort((a, b) => SLOT_PRIORITY.indexOf(a) - SLOT_PRIORITY.indexOf(b));
             delete players[socket.id];
         }
         io.emit('state', { players, puck });
@@ -68,14 +72,14 @@ setInterval(() => {
     puck.x += puck.vx;
     puck.y += puck.vy;
 
-    // Sørg for at pucken aldri stopper helt opp (minimumshastighet)
+    // Sørg for at pucken aldri stopper helt opp
     const minSpeed = 4;
     let currentSpeed = Math.sqrt(puck.vx * puck.vx + puck.vy * puck.vy);
     if (currentSpeed < minSpeed && currentSpeed > 0) {
         puck.vx = (puck.vx / currentSpeed) * minSpeed;
         puck.vy = (puck.vy / currentSpeed) * minSpeed;
     } else if (currentSpeed === 0) {
-        puck.vx = 4;
+        puck.vx = 5;
         puck.vy = 3;
     }
 
@@ -84,7 +88,6 @@ setInterval(() => {
 
     // Sjekk alle 6 soner (0 til 5)
     for (let slot = 0; slot < 6; slot++) {
-        // Finn om det er en aktiv spiller i denne slotten
         let activePlayer = null;
         for (let id in players) {
             if (players[id].slot === slot) {
@@ -94,7 +97,6 @@ setInterval(() => {
         }
 
         if (activePlayer) {
-            // Håndter aktiv spiller-målvakt og mål
             let p = activePlayer;
             let gx = 0, gy = 0;
             let goalStartX = 0, goalEndX = 0, goalStartY = 0, goalEndY = 0;
@@ -163,11 +165,10 @@ setInterval(() => {
                 puck.vy = (puck.vy - 2 * dot * ny) + (p.vy * 12);
             }
         } else {
-            // Ingen spiller her: La sonen fungere som en solid vegg med målåpning i midten
+            // Vegg der det ikke er aktive spillere
             if (slot === 0) {
                 if (puck.x - puck.radius <= x1) {
                     if (puck.y >= y1 + 100 && puck.y <= y2 - 100) {
-                        // Mål i ledig sone gir ingen poengstraff, bare reset til Spiller 1
                         resetPuck();
                     } else {
                         puck.vx *= -1;
@@ -210,7 +211,6 @@ setInterval(() => {
         }
     }
 
-    // Ytre sikkerhetssprett
     if (puck.x < x1) { puck.vx *= -1; puck.x = x1; }
     if (puck.x > x2) { puck.vx *= -1; puck.x = x2; }
     if (puck.y < y1) { puck.vy *= -1; puck.y = y1; }
@@ -220,11 +220,10 @@ setInterval(() => {
 }, 1000 / 60);
 
 function resetPuck() {
-    // Start ballen rett ved Spiller 1 (venstre kortside / slot 0) for å sette den i gang
-    puck.x = 100;
+    puck.x = 400;
     puck.y = 300;
-    puck.vx = 5 + Math.random() * 2; // Skyter den inn i banen mot høyre
-    puck.vy = (Math.random() > 0.5 ? 1 : -1) * (2 + Math.random() * 2);
+    puck.vx = (Math.random() > 0.5 ? 1 : -1) * (4 + Math.random() * 2);
+    puck.vy = (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 2);
 }
 
 const PORT = process.env.PORT || 10000;
