@@ -15,33 +15,30 @@ const SLOT_PRIORITY = [1, 4, 5, 2, 0, 3];
 let availableSlots = [...SLOT_PRIORITY];
 
 io.on('connection', (socket) => {
-    console.log('Spiller koblet til:', socket.id);
+    console.log('Klient koblet til:', socket.id);
 
-    if (availableSlots.length > 0) {
-        let slot = availableSlots.shift();
-        players[socket.id] = { 
-            id: socket.id, 
-            slot: slot, 
-            name: `Spiller ${slot + 1}`,
-            score: 0, 
-            x: 0, y: 0, 
-            prevX: 0, prevY: 0,
-            vx: 0, vy: 0,
-            radius: 20 
-        };
-        socket.emit('assigned-slot', slot);
-    } else {
-        socket.emit('full');
-    }
+    // Vent med å tildele plass til spilleren faktisk trykker "Bli med" og sender navn
 
     socket.on('set-name', (name) => {
-        if (players[socket.id]) {
-            players[socket.id].name = name;
+        // Sjekk at spilleren ikke allerede har fått en plass
+        if (!players[socket.id] && availableSlots.length > 0) {
+            let slot = availableSlots.shift();
+            players[socket.id] = { 
+                id: socket.id, 
+                slot: slot, 
+                name: name || `Spiller ${slot + 1}`,
+                score: 0, 
+                x: 0, y: 0, 
+                prevX: 0, prevY: 0,
+                vx: 0, vy: 0,
+                radius: 20 
+            };
+            socket.emit('assigned-slot', slot);
             io.emit('state', { players, puck });
+        } else if (availableSlots.length === 0) {
+            socket.emit('full');
         }
     });
-
-    io.emit('state', { players, puck });
 
     socket.on('move', (data) => {
         if (players[socket.id]) {
@@ -113,9 +110,9 @@ setInterval(() => {
             let p = activePlayer;
             let gx = 0, gy = 0;
             let goalStartX = 0, goalEndX = 0, goalStartY = 0, goalEndY = 0;
-            let goalSizeHalf = 35; // Mindre mål
+            let goalSizeHalf = 55; // Større mål (110 totalt)
 
-            if (slot === 0) { // Venstre kortside (større dybdebevegelse ±45)
+            if (slot === 0) { // Venstre kortside
                 gx = x1 + (p.x * 45);
                 gy = ((y1 + y2) / 2) + (p.y * 180);
                 goalStartY = ((y1 + y2) / 2) - goalSizeHalf; 
@@ -141,7 +138,7 @@ setInterval(() => {
                 let startX = slot === 1 ? x1 : x1 + sectionWidth;
                 let sectionCenter = startX + sectionWidth / 2;
                 gx = sectionCenter + (p.x * (sectionWidth / 2 - 30));
-                gy = y1 + (p.y * 45); // Dybdebevegelse inn i banen
+                gy = y1 + (p.y * 45); 
                 goalStartX = sectionCenter - goalSizeHalf; 
                 goalEndX = sectionCenter + goalSizeHalf;
 
@@ -150,11 +147,11 @@ setInterval(() => {
                     resetPuck();
                 }
             }
-            else if (slot === 4 || slot === 5) { // Bunnvegg (Invertert y-akse for riktig opp/ned)
+            else if (slot === 4 || slot === 5) { // Bunnvegg (Korrigerte pluss/minus for riktig opp/ned)
                 let startX = slot === 5 ? x1 : x1 + sectionWidth;
                 let sectionCenter = startX + sectionWidth / 2;
                 gx = sectionCenter + (p.x * (sectionWidth / 2 - 30));
-                gy = y2 - (p.y * 45); // Invertert slik at opp betyr frem
+                gy = y2 + (p.y * 45); 
                 goalStartX = sectionCenter - goalSizeHalf; 
                 goalEndX = sectionCenter + goalSizeHalf;
 
@@ -184,7 +181,7 @@ setInterval(() => {
                 puck.vy = (puck.vy - 2 * dot * ny) + (p.vy * 12);
             }
         } else {
-            let goalSizeHalf = 35;
+            let goalSizeHalf = 55;
             if (slot === 0) {
                 if (puck.x - puck.radius <= x1) {
                     let gMid = (y1 + y2) / 2;
