@@ -17,10 +17,7 @@ let availableSlots = [...SLOT_PRIORITY];
 io.on('connection', (socket) => {
     console.log('Klient koblet til:', socket.id);
 
-    // Vent med å tildele plass til spilleren faktisk trykker "Bli med" og sender navn
-
     socket.on('set-name', (name) => {
-        // Sjekk at spilleren ikke allerede har fått en plass
         if (!players[socket.id] && availableSlots.length > 0) {
             let slot = availableSlots.shift();
             players[socket.id] = { 
@@ -110,9 +107,9 @@ setInterval(() => {
             let p = activePlayer;
             let gx = 0, gy = 0;
             let goalStartX = 0, goalEndX = 0, goalStartY = 0, goalEndY = 0;
-            let goalSizeHalf = 55; // Større mål (110 totalt)
+            let goalSizeHalf = 55;
 
-            if (slot === 0) { // Venstre kortside
+            if (slot === 0) { // Venstre kortside (Mål)
                 gx = x1 + (p.x * 45);
                 gy = ((y1 + y2) / 2) + (p.y * 180);
                 goalStartY = ((y1 + y2) / 2) - goalSizeHalf; 
@@ -123,7 +120,7 @@ setInterval(() => {
                     resetPuck();
                 }
             } 
-            else if (slot === 3) { // Høyre kortside
+            else if (slot === 3) { // Høyre kortside (Mål)
                 gx = x2 - (p.x * 45);
                 gy = ((y1 + y2) / 2) + (p.y * 180);
                 goalStartY = ((y1 + y2) / 2) - goalSizeHalf; 
@@ -134,7 +131,7 @@ setInterval(() => {
                     resetPuck();
                 }
             }
-            else if (slot === 1 || slot === 2) { // Toppvegg
+            else if (slot === 1 || slot === 2) { // Toppvegg (Mål)
                 let startX = slot === 1 ? x1 : x1 + sectionWidth;
                 let sectionCenter = startX + sectionWidth / 2;
                 gx = sectionCenter + (p.x * (sectionWidth / 2 - 30));
@@ -147,7 +144,7 @@ setInterval(() => {
                     resetPuck();
                 }
             }
-            else if (slot === 4 || slot === 5) { // Bunnvegg (Korrigerte pluss/minus for riktig opp/ned)
+            else if (slot === 4 || slot === 5) { // Bunnvegg (Mål)
                 let startX = slot === 5 ? x1 : x1 + sectionWidth;
                 let sectionCenter = startX + sectionWidth / 2;
                 gx = sectionCenter + (p.x * (sectionWidth / 2 - 30));
@@ -181,51 +178,31 @@ setInterval(() => {
                 puck.vy = (puck.vy - 2 * dot * ny) + (p.vy * 12);
             }
         } else {
-            let goalSizeHalf = 55;
+            // HELT SOLID VEGG der det ikke er noen spiller (ingen mål/reset)
             if (slot === 0) {
                 if (puck.x - puck.radius <= x1) {
-                    let gMid = (y1 + y2) / 2;
-                    if (puck.y >= gMid - goalSizeHalf && puck.y <= gMid + goalSizeHalf) {
-                        resetPuck();
-                    } else {
-                        puck.vx *= -1;
-                        puck.x = x1 + puck.radius;
-                    }
+                    puck.vx *= -1;
+                    puck.x = x1 + puck.radius;
                 }
             }
             else if (slot === 3) {
                 if (puck.x + puck.radius >= x2) {
-                    let gMid = (y1 + y2) / 2;
-                    if (puck.y >= gMid - goalSizeHalf && puck.y <= gMid + goalSizeHalf) {
-                        resetPuck();
-                    } else {
-                        puck.vx *= -1;
-                        puck.x = x2 - puck.radius;
-                    }
+                    puck.vx *= -1;
+                    puck.x = x2 - puck.radius;
                 }
             }
             else if (slot === 1 || slot === 2) {
                 let startX = slot === 1 ? x1 : x1 + sectionWidth;
-                let gMid = startX + sectionWidth / 2;
-                if (puck.y - puck.radius <= y1) {
-                    if (puck.x >= gMid - goalSizeHalf && puck.x <= gMid + goalSizeHalf) {
-                        resetPuck();
-                    } else {
-                        puck.vy *= -1;
-                        puck.y = y1 + puck.radius;
-                    }
+                if (puck.y - puck.radius <= y1 && puck.x >= startX && puck.x <= startX + sectionWidth) {
+                    puck.vy *= -1;
+                    puck.y = y1 + puck.radius;
                 }
             }
             else if (slot === 4 || slot === 5) {
                 let startX = slot === 5 ? x1 : x1 + sectionWidth;
-                let gMid = startX + sectionWidth / 2;
-                if (puck.y + puck.radius >= y2) {
-                    if (puck.x >= gMid - goalSizeHalf && puck.x <= gMid + goalSizeHalf) {
-                        resetPuck();
-                    } else {
-                        puck.vy *= -1;
-                        puck.y = y2 - puck.radius;
-                    }
+                if (puck.y + puck.radius >= y2 && puck.x >= startX && puck.x <= startX + sectionWidth) {
+                    puck.vy *= -1;
+                    puck.y = y2 - puck.radius;
                 }
             }
         }
