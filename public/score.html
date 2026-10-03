@@ -13,8 +13,12 @@
         ul { padding-left: 20px; margin: 10px 0 0 0; text-align: left; }
         li { margin-bottom: 6px; }
         p { color: #aaa; font-size: 14px; margin: 5px 0 15px 0; }
-        #start-btn { padding: 14px 28px; font-size: 18px; font-weight: bold; background: #00ffcc; color: #111; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,255,204,0.4); }
+        .btn-container { display: flex; gap: 15px; }
+        #start-btn, #open-arena-btn { padding: 14px 24px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        #start-btn { background: #00ffcc; color: #111; }
         #start-btn:hover { background: #00ddbb; }
+        #open-arena-btn { background: #3b82f6; color: white; }
+        #open-arena-btn:hover { background: #2563eb; }
     </style>
 </head>
 <body>
@@ -22,20 +26,29 @@
     <div id="qrcode"></div>
     <p>Skann for å bli med på mobilen!</p>
     <div class="score-box" id="scoreboard">Venter på spillere...</div>
-    <button id="start-btn" onclick="startGame()">START SPILL</button>
+    
+    <div class="btn-container">
+        <button id="open-arena-btn" onclick="openArena()">Åpne Spillbrett</button>
+        <button id="start-btn" onclick="startGame()">START SPILL</button>
+    </div>
 
     <script>
         const socket = io();
-        const colors = ["#ff4444", "#ffbb33", "#aa66cc", "#33b5e5", "#00C851", "#ff8800"];
+        const colors = ["#ff4444", "#ffbb33", "#aa66cc", "#33b5e5", "#00C851",="#ff8800"];
 
         new QRCode(document.getElementById("qrcode"), {
             text: `${window.location.origin}/mobile.html`,
-            width: 150,
-            height: 150
+            width: 130,
+            height: 130
         });
 
         function startGame() {
             socket.emit('start-game');
+        }
+
+        function openArena() {
+            // Åpner selve spillbrettet (hovedsiden / roten) i en ny fane
+            window.open('/', '_blank');
         }
 
         socket.on('state', (state) => {
