@@ -62,12 +62,7 @@
             const x1 = 60, x2 = 740, y1 = 60, y2 = 540;
             const sectionWidth = (x2 - x1) / 2;
 
-            // Tegn banen og målene i spillernes farger
-            ctx.strokeStyle = "#444";
-            ctx.lineWidth = 4;
-            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
-
-            // Tegn målsoner (åpninger der målet er)
+            // Tegn alle 6 målsoner i sine respektive farger (uansett om spiller er tilkoblet eller ei)
             ctx.lineWidth = 6;
             
             // Slot 0 (Venstre mål)
@@ -94,7 +89,24 @@
             ctx.strokeStyle = colors[5];
             ctx.beginPath(); ctx.moveTo(x1 + 50, y2); ctx.lineTo(x1 + sectionWidth - 50, y2); ctx.stroke();
 
-            // Tegn sirkulære målvakter for tilkoblede spillere
+            // Tegn lukkede vegger der det IKKE er spillere, slik at banen er tett
+            ctx.strokeStyle = "#444";
+            ctx.lineWidth = 4;
+            
+            // Sjekk hvilke slots som er aktive
+            let activeSlots = new Set();
+            for (let id in gameState.players) {
+                activeSlots.add(gameState.players[id].slot);
+            }
+
+            if (!activeSlots.has(0)) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1, y1 + 100); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x1, y2 - 100); ctx.lineTo(x1, y2); ctx.stroke(); }
+            if (!activeSlots.has(1)) { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + 50, y1); ctx.stroke(); }
+            if (!activeSlots.has(2)) { ctx.beginPath(); ctx.moveTo(x2 - 50, y1); ctx.lineTo(x2, y1); ctx.stroke(); }
+            if (!activeSlots.has(3)) { ctx.beginPath(); ctx.moveTo(x2, y1); ctx.lineTo(x2, y1 + 100); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x2, y2 - 100); ctx.lineTo(x2, y2); ctx.stroke(); }
+            if (!activeSlots.has(4)) { ctx.beginPath(); ctx.moveTo(x1 + sectionWidth + 50, y2); ctx.lineTo(x2, y2); ctx.stroke(); }
+            if (!activeSlots.has(5)) { ctx.beginPath(); ctx.moveTo(x1, y2); ctx.lineTo(x1 + 50, y2); ctx.stroke(); }
+
+            // Tegn sirkulære målvakter for aktiverte spillere
             for (let id in gameState.players) {
                 let p = gameState.players[id];
                 if (p.absX !== undefined && p.absY !== undefined) {
