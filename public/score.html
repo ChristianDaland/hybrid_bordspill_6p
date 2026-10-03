@@ -7,12 +7,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { margin: 0; background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-        h1 { margin-bottom: 20px; color: #00ffcc; }
-        #qrcode { background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
-        .score-box { background: #222; padding: 25px; border-radius: 12px; font-size: 20px; min-width: 320px; border: 2px solid #333; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        h1 { margin-bottom: 10px; color: #00ffcc; }
+        #qrcode { background: white; padding: 10px; border-radius: 10px; margin-bottom: 15px; }
+        .score-box { background: #222; padding: 20px; border-radius: 12px; font-size: 18px; min-width: 320px; border: 2px solid #333; box-shadow: 0 4px 20px rgba(0,0,0,0.5); margin-bottom: 20px; }
         ul { padding-left: 20px; margin: 10px 0 0 0; text-align: left; }
-        li { margin-bottom: 8px; }
-        p { color: #aaa; font-size: 16px; }
+        li { margin-bottom: 6px; }
+        p { color: #aaa; font-size: 14px; margin: 5px 0 15px 0; }
+        #start-btn { padding: 14px 28px; font-size: 18px; font-weight: bold; background: #00ffcc; color: #111; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,255,204,0.4); }
+        #start-btn:hover { background: #00ddbb; }
     </style>
 </head>
 <body>
@@ -20,6 +22,7 @@
     <div id="qrcode"></div>
     <p>Skann for å bli med på mobilen!</p>
     <div class="score-box" id="scoreboard">Venter på spillere...</div>
+    <button id="start-btn" onclick="startGame()">START SPILL</button>
 
     <script>
         const socket = io();
@@ -27,9 +30,13 @@
 
         new QRCode(document.getElementById("qrcode"), {
             text: `${window.location.origin}/mobile.html`,
-            width: 180,
-            height: 180
+            width: 150,
+            height: 150
         });
+
+        function startGame() {
+            socket.emit('start-game');
+        }
 
         socket.on('state', (state) => {
             let html = "<b>Spillere & Poeng:</b><ul>";
