@@ -7,17 +7,18 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         body { margin: 0; background: #111; color: white; font-family: sans-serif; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 300px; background: #222; padding: 20px; display: flex; flex-direction: column; gap: 15px; border-right: 2px solid #333; }
+        #sidebar { width: 300px; background: #222; padding: 20px; display: flex; flex-direction: column; gap: 15px; border-right: 2px solid #333; box-sizing: border-box; }
         #game-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #0a0a0a; }
-        canvas { background: #1a1a1a; border: 4px solid #444; }
-        .score-box { background: #333; padding: 10px; border-radius: 5px; }
+        canvas { background: #1a1a1a; border: 4px solid #444; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        .score-box { background: #333; padding: 15px; border-radius: 8px; font-size: 15px; line-height: 1.5; }
+        ul { padding-left: 20px; margin: 5px 0; }
     </style>
 </head>
 <body>
     <div id="sidebar">
         <h2>Kamparena (6P)</h2>
         <div id="qrcode"></div>
-        <p>Skann for å bli med!</p>
+        <p>Skann for å bli med på mobilen!</p>
         <div class="score-box" id="scoreboard">Venter på spillere...</div>
     </div>
     <div id="game-container">
@@ -44,72 +45,67 @@
         });
 
         function updateScoreboard() {
-            let html = "<h3>Spillere & Poeng:</h3><ul>";
+            let html = "<b>Spillere & Poeng:</b><ul>";
+            let count = 0;
             for (let id in gameState.players) {
                 let p = gameState.players[id];
-                html > `<li>Spiller ${p.slot + 1}: ${p.score}p</li>`;
+                html += `<li>Spiller ${p.slot + 1}: <span style="color:${colors[p.slot % colors.length]}">${p.score}p</span></li>`;
+                count++;
             }
-            document.getElementById('scoreboard').innerHTML = html || "Ingen spillere tilkoblet";
+            html += "</ul>";
+            document.getElementById('scoreboard').innerHTML = count > 0 ? html : "Ingen spillere tilkoblet";
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Ytre ramme for banen
             const x1 = 60, x2 = 740, y1 = 60, y2 = 540;
+            const sectionWidth = (x2 - x1) / 2;
+
+            // Tegn banen og målene i spillernes farger
             ctx.strokeStyle = "#444";
             ctx.lineWidth = 4;
             ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-            // Tegn spillere basert på deres plass (0 til 5)
+            // Tegn målsoner (åpninger der målet er)
+            ctx.lineWidth = 6;
+            
+            // Slot 0 (Venstre mål)
+            ctx.strokeStyle = colors[0];
+            ctx.beginPath(); ctx.moveTo(x1, y1 + 100); ctx.lineTo(x1, y2 - 100); ctx.stroke();
+
+            // Slot 1 (Topp venstre mål)
+            ctx.strokeStyle = colors[1];
+            ctx.beginPath(); ctx.moveTo(x1 + 50, y1); ctx.lineTo(x1 + sectionWidth - 50, y1); ctx.stroke();
+
+            // Slot 2 (Topp høyre mål)
+            ctx.strokeStyle = colors[2];
+            ctx.beginPath(); ctx.moveTo(x1 + sectionWidth + 50, y1); ctx.lineTo(x2 - 50, y1); ctx.stroke();
+
+            // Slot 3 (Høyre mål)
+            ctx.strokeStyle = colors[3];
+            ctx.beginPath(); ctx.moveTo(x2, y1 + 100); ctx.lineTo(x2, y2 - 100); ctx.stroke();
+
+            // Slot 4 (Bunn høyre mål)
+            ctx.strokeStyle = colors[4];
+            ctx.beginPath(); ctx.moveTo(x1 + sectionWidth + 50, y2); ctx.lineTo(x2 - 50, y2); ctx.stroke();
+
+            // Slot 5 (Bunn venstre mål)
+            ctx.strokeStyle = colors[5];
+            ctx.beginPath(); ctx.moveTo(x1 + 50, y2); ctx.lineTo(x1 + sectionWidth - 50, y2); ctx.stroke();
+
+            // Tegn sirkulære målvakter for tilkoblede spillere
             for (let id in gameState.players) {
                 let p = gameState.players[id];
-                ctx.fillStyle = colors[p.slot % colors.length];
-                ctx.strokeStyle = "#fff";
-                ctx.lineWidth = 2;
-
-                let pWidth = 80;
-                let pHeight = 16;
-                let posRatio = p.pos / 100;
-
-                let px = 0, py = 0;
-
-                if (p.slot === 0) {
-                    // Venstre kortside
-                    py = y1 + posRatio * (y2 - y1 - pWidth);
-                    px = x1 - 10;
-                    ctx.fillRect(px, py, pHeight, pWidth);
-                    ctx.strokeRect(px, py, pHeight, pWidth);
-                } else if (p.slot === 1) {
-                    // Langside topp venstre
-                    px = x1 + posRatio * ((x2 - x1) / 2 - pWidth);
-                    py = y1 - 10;
-                    ctx.fillRect(px, py, pWidth, pHeight);
-                    ctx.strokeRect(px, py, pWidth, pHeight);
-                } else if (p.slot === 2) {
-                    // Langside topp høyre
-                    px = x1 + (x2 - x1) / 2 + posRatio * ((x2 - x1) / 2 - pWidth);
-                    py = y1 - 10;
-                    ctx.fillRect(px, py, pWidth, pHeight);
-                    ctx.strokeRect(px, py, pWidth, pHeight);
-                } else if (p.slot === 3) {
-                    // Høyre kortside
-                    py = y1 + posRatio * (y2 - y1 - pWidth);
-                    px = x2 - 6;
-                    ctx.fillRect(px, py, pHeight, pWidth);
-                    ctx.strokeRect(px, py, pHeight, pWidth);
-                } else if (p.slot === 4) {
-                    // Langside bunn høyre
-                    px = x1 + (x2 - x1) / 2 + posRatio * ((x2 - x1) / 2 - pWidth);
-                    py = y2 - 6;
-                    ctx.fillRect(px, py, pWidth, pHeight);
-                    ctx.strokeRect(px, py, pWidth, pHeight);
-                } else if (p.slot === 5) {
-                    // Langside bunn venstre
-                    px = x1 + posRatio * ((x2 - x1) / 2 - pWidth);
-                    py = y2 - 6;
-                    ctx.fillRect(px, py, pWidth, pHeight);
-                    ctx.strokeRect(px, py, pWidth, pHeight);
+                if (p.absX !== undefined && p.absY !== undefined) {
+                    ctx.beginPath();
+                    ctx.arc(p.absX, p.absY, p.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = colors[p.slot % colors.length];
+                    ctx.fill();
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.stroke();
+                    ctx.closePath();
                 }
             }
 
