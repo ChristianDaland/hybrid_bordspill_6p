@@ -3,130 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Mobilkontroll - Målvakt</title>
+    <title>Kamparena - Mobilkontroll</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { background: #111; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
-        .slot-info { font-size: 22px; color: #00ffcc; margin-bottom: 20px; font-weight: bold; }
-        #name-screen { display: flex; flex-direction: column; gap: 15px; width: 80%; max-width: 300px; }
-        #name-screen input { padding: 12px; font-size: 16px; border-radius: 6px; border: 1px solid #444; background: #222; color: white; text-align: center; }
-        #name-screen button { padding: 12px; font-size: 16px; border-radius: 6px; border: none; background: #00C851; color: white; font-weight: bold; cursor: pointer; }
-        #joystick-screen { display: none; flex-direction: column; align-items: center; }
-        #joystick-container {
-            width: 260px;
-            height: 260px;
-            background: #1a1a1a;
-            border: 3px dashed #444;
-            border-radius: 50%;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
-        }
-        #stick {
-            width: 70px;
-            height: 70px;
-            background: #ff4444;
-            border-radius: 50%;
-            position: absolute;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            cursor: pointer;
-        }
-        p { color: #888; font-size: 14px; margin-top: 25px; }
+        body { margin: 0; background: #111; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
+        #login-screen { display: flex; flex-direction: column; align-items: center; gap: 15px; }
+        input { padding: 12px; font-size: 16px; border-radius: 6px; border: none; text-align: center; width: 220px; }
+        button { padding: 12px 24px; font-size: 16px; background: #00ffcc; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        #joystick-container { display: none; position: relative; width: 250px; height: 250px; background: #222; border-radius: 50%; border: 4px solid #444; justify-content: center; align-items: center; margin-top: 20px; }
+        #stick { position: absolute; width: 80px; height: 80px; background: #00ffcc; border-radius: 50%; top: 85px; left: 85px; touch-action: none; box-shadow: 0 4px 15px rgba(0,255,204,0.4); }
+        #status { font-size: 18px; color: #aaa; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <div id="name-screen">
-        <h2>Skriv inn ditt navn</h2>
-        <input type="text" id="playerNameInput" placeholder="Ditt navn..." maxlength="15">
-        <button id="joinBtn">Bli med i spillet</button>
+
+    <div id="login-screen">
+        <h2>Bli med i Kamparena</h2>
+        <input type="text" id="username" placeholder="Skriv ditt navn..." maxlength="15">
+        <button onclick="joinGame()">Start Spill</button>
     </div>
 
-    <div id="joystick-screen">
-        <div class="slot-info" id="slotText">Kobler til...</div>
+    <div id="joystick-screen" style="display:none; flex-direction: column; align-items: center;">
+        <div id="status">Koble til...</div>
         <div id="joystick-container">
             <div id="stick"></div>
         </div>
-        <p>Dra prikken for å styre målvakten og gi fart til ballen!</p>
     </div>
 
     <script>
         const socket = io();
-        const nameScreen = document.getElementById('name-screen');
-        const joystickScreen = document.getElementById('joystick-screen');
-        const playerNameInput = document.getElementById('playerNameInput');
-        const joinBtn = document.getElementById('joinBtn');
-        const slotText = document.getElementById('slotText');
-        const container = document.getElementById('joystick-container');
-        const stick = document.getElementById('stick');
+        let mySlot = null;
 
-        let assignedSlot = null;
-        let isDragging = false;
-        let center = { x: 130, y: 130 };
-        let maxRadius = 90;
-        let stickPos = { x: 0, y: 0 };
-
-        const colors = ["#ff4444", "#ffbb33", "#aa66cc", "#33b5e5", "#00C851", "#ff8800"];
-
-        joinBtn.addEventListener('click', () => {
-            let name = playerNameInput.value.trim() || "Spiller";
+        function joinGame() {
+            const name = document.getElementById('username').value.trim();
+            if (!name) return alert('Vennligst skriv et navn!');
+            
             socket.emit('set-name', name);
-            nameScreen.style.display = 'none';
-            joystickScreen.style.display = 'flex';
-        });
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('joystick-screen').style.display = 'flex';
+        }
 
         socket.on('assigned-slot', (slot) => {
-            assignedSlot = slot;
-            slotText.innerText = `Sone ${slot + 1}`;
-            stick.style.background = colors[slot % colors.length];
+            mySlot = slot;
+            document.getElementById('status').innerText = `Spiller ${slot + 1} - Styr med kontrollen`;
         });
 
         socket.on('full', () => {
-            slotText.innerText = 'Spillet er fullt!';
+            alert('Spillet er fullt!');
+            location.reload();
         });
+
+        // Joystick logikk
+        const container = document.getElementById('joystick-container');
+        const stick = document.getElementById('stick');
+        let dragging = false;
+        let center = { x: 125, y: 125 };
+        let maxDist = 85;
 
         function handleTouch(clientX, clientY) {
             const rect = container.getBoundingClientRect();
-            let dx = clientX - (rect.left + center.x);
-            let dy = clientY - (rect.top + center.y);
-            let distance = Math.sqrt(dx * dx + dy * dy);
+            let x = clientX - rect.left - center.x;
+            let y = clientY - rect.top - center.y;
+            let dist = Math.sqrt(x * x + y * y);
 
-            if (distance > maxRadius) {
-                dx = (dx / distance) * maxRadius;
-                dy = (dy / distance) * maxRadius;
+            if (dist > maxDist) {
+                x = (x / dist) * maxDist;
+                y = (y / dist) * maxDist;
             }
 
-            stick.style.transform = `translate(${dx}px, ${dy}px)`;
+            stick.style.transform = `translate(${x}px, ${y}px)`;
 
-            stickPos.x = dx / maxRadius;
-            stickPos.y = dy / maxRadius;
+            // Beregn hastighet basert på hvor langt prikken er dratt (skalert ned til passe fart)
+            let vx = (x / maxDist) * 6; 
+            let vy = (y / maxDist) * 6;
 
-            socket.emit('move', { x: stickPos.x, y: stickPos.y });
+            socket.emit('move', { vx, vy });
         }
 
-        function resetStick() {
-            isDragging = false;
-            stick.style.transform = `translate(0px, 0px)`;
-            stickPos.x = 0;
-            stickPos.y = 0;
-            socket.emit('move', { x: 0, y: 0 });
-        }
-
-        stick.addEventListener('touchstart', (e) => { isDragging = true; e.preventDefault(); });
+        stick.addEventListener('touchstart', (e) => { dragging = true; });
         window.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            handleTouch(e.touches[0].clientX, e.touches[0].clientY);
-            e.preventDefault();
-        }, { passive: false });
-        window.addEventListener('touchend', resetStick);
+            if (!dragging) return;
+            let touch = e.touches[0];
+            handleTouch(touch.clientX, touch.clientY);
+        });
+        window.addEventListener('touchend', () => {
+            if (!dragging) return;
+            dragging = false;
+            stick.style.transform = `translate(0px, 0px)`;
+            socket.emit('move', { vx: 0, vy: 0 }); // Stopp når man slipper
+        });
 
-        stick.addEventListener('mousedown', (e) => { isDragging = true; });
+        // For testing med mus på PC hvis ønskelig
+        stick.addEventListener('mousedown', (e) => { dragging = true; });
         window.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
+            if (!dragging) return;
             handleTouch(e.clientX, e.clientY);
         });
-        window.addEventListener('mouseup', resetStick);
+        window.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            stick.style.transform = `translate(0px, 0px)`;
+            socket.emit('move', { vx: 0, vy: 0 });
+        });
     </script>
 </body>
 </html>

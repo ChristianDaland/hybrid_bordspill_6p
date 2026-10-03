@@ -28,11 +28,12 @@ io.on('connection', (socket) => {
                     score: 0, 
                     x: 400, 
                     y: 300, 
+                    vx: 0,
+                    vy: 0,
                     radius: 20 
                 };
                 socket.emit('assigned-slot', slot);
                 io.emit('state', { players, puck });
-                console.log(`Spiller tildelt slot ${slot}: ${name}`);
             } else if (availableSlots.length === 0) {
                 socket.emit('full');
             }
@@ -41,12 +42,13 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Motta hastighet/retning fra mobil-joysticken
     socket.on('move', (data) => {
         try {
             if (players[socket.id] && data) {
                 let p = players[socket.id];
-                p.x = Math.max(80, Math.min(720, data.x));
-                p.y = Math.max(80, Math.min(520, data.y));
+                p.vx = data.vx || 0;
+                p.vy = data.vy || 0;
             }
         } catch (err) {
             console.error('Feil i move:', err);
@@ -61,7 +63,6 @@ io.on('connection', (socket) => {
                 delete players[socket.id];
             }
             io.emit('state', { players, puck });
-            console.log('Spiller koblet fra:', socket.id);
         } catch (err) {
             console.error('Feil ved disconnect:', err);
         }
@@ -70,6 +71,22 @@ io.on('connection', (socket) => {
 
 setInterval(() => {
     try {
+        const x1 = 60, x2 = 740, y1 = 60, y2 = 540;
+        const sectionWidth = (x2 - x1) / 2;
+        const goalSizeHalf = 55;
+
+        // Flytt spillere basert på hastighet fra mobilen
+        for (let id in players) {
+            let p = players[id];
+            if (!p) continue;
+            p.x += p.vx;
+            p.y += p.vy;
+
+            // Hold spillerne innenfor banen
+            p.x = Math.max(x1 + p.radius, Math.min(x2 - p.radius, p.x));
+            p.y = Math.max(y1 + p.radius, Math.min(y2 - p.radius, p.y));
+        }
+
         if (Object.keys(players).length === 0) {
             io.emit('state', { players, puck });
             return;
@@ -88,10 +105,6 @@ setInterval(() => {
             puck.vx = (puck.vx / currentSpeed) * minSpeed;
             puck.vy = (puck.vy / currentSpeed) * minSpeed;
         }
-
-        const x1 = 60, x2 = 740, y1 = 60, y2 = 540;
-        const sectionWidth = (x2 - x1) / 2;
-        const goalSizeHalf = 55;
 
         // Sjekk mål for hver sone
         for (let slot = 0; slot < 6; slot++) {
@@ -150,7 +163,7 @@ setInterval(() => {
             }
         }
 
-        // Kollisjon for spillere og puck
+        // Kollisjon mellom spillere og puck
         for (let id in players) {
             let p = players[id];
             if (!p) continue;
