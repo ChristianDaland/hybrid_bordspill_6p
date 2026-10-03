@@ -25,9 +25,7 @@ io.on('connection', (socket) => {
                 slot: slot, 
                 name: name || `Spiller ${slot + 1}`,
                 score: 0, 
-                x: 0, y: 0, 
-                prevX: 0, prevY: 0,
-                vx: 0, vy: 0,
+                x: 400, y: 300, // Starter på midten
                 radius: 20 
             };
             socket.emit('assigned-slot', slot);
@@ -40,12 +38,9 @@ io.on('connection', (socket) => {
     socket.on('move', (data) => {
         if (players[socket.id]) {
             let p = players[socket.id];
-            p.prevX = p.x;
-            p.prevY = p.y;
-            p.x = data.x; 
-            p.y = data.y; 
-            p.vx = p.x - p.prevX; 
-            p.vy = p.y - p.prevY;
+            // Spillere kan bevege seg fritt innenfor banen (60 til 740 i X, 60 til 540 i Y)
+            p.x = Math.max(80, Math.min(720, data.x));
+            p.y = Math.max(80, Math.min(520, data.y));
         }
     });
 
@@ -93,7 +88,9 @@ setInterval(() => {
 
     const x1 = 60, x2 = 740, y1 = 60, y2 = 540;
     const sectionWidth = (x2 - x1) / 2;
+    const goalSizeHalf = 55;
 
+    // Sjekk mål for hver sone
     for (let slot = 0; slot < 6; slot++) {
         let activePlayer = null;
         for (let id in players) {
@@ -104,107 +101,70 @@ setInterval(() => {
         }
 
         if (activePlayer) {
-            let p = activePlayer;
-            let gx = 0, gy = 0;
-            let goalStartX = 0, goalEndX = 0, goalStartY = 0, goalEndY = 0;
-            let goalSizeHalf = 55;
+            let goalStartY = 0, goalEndY = 0, goalStartX = 0, goalEndX = 0;
 
-            if (slot === 0) { // Venstre kortside (Mål)
-                gx = x1 + (p.x * 45);
-                gy = ((y1 + y2) / 2) + (p.y * 180);
-                goalStartY = ((y1 + y2) / 2) - goalSizeHalf; 
-                goalEndY = ((y1 + y2) / 2) + goalSizeHalf;
-
+            if (slot === 0) {
+                goalStartY = 300 - goalSizeHalf; goalEndY = 300 + goalSizeHalf;
                 if (puck.x - puck.radius < x1 && puck.y >= goalStartY && puck.y <= goalEndY) {
-                    p.score -= 1;
+                    activePlayer.score -= 1;
                     resetPuck();
                 }
-            } 
-            else if (slot === 3) { // Høyre kortside (Mål)
-                gx = x2 - (p.x * 45);
-                gy = ((y1 + y2) / 2) + (p.y * 180);
-                goalStartY = ((y1 + y2) / 2) - goalSizeHalf; 
-                goalEndY = ((y1 + y2) / 2) + goalSizeHalf;
-
+            } else if (slot === 3) {
+                goalStartY = 300 - goalSizeHalf; goalEndY = 300 + goalSizeHalf;
                 if (puck.x + puck.radius > x2 && puck.y >= goalStartY && puck.y <= goalEndY) {
-                    p.score -= 1;
+                    activePlayer.score -= 1;
                     resetPuck();
                 }
-            }
-            else if (slot === 1 || slot === 2) { // Toppvegg (Mål)
+            } else if (slot === 1 || slot === 2) {
                 let startX = slot === 1 ? x1 : x1 + sectionWidth;
-                let sectionCenter = startX + sectionWidth / 2;
-                gx = sectionCenter + (p.x * (sectionWidth / 2 - 30));
-                gy = y1 + (p.y * 45); 
-                goalStartX = sectionCenter - goalSizeHalf; 
-                goalEndX = sectionCenter + goalSizeHalf;
-
+                goalStartX = startX + sectionWidth/2 - goalSizeHalf; 
+                goalEndX = startX + sectionWidth/2 + goalSize/2;
                 if (puck.y - puck.radius < y1 && puck.x >= goalStartX && puck.x <= goalEndX) {
-                    p.score -= 1;
+                    activePlayer.score -= 1;
                     resetPuck();
                 }
-            }
-            else if (slot === 4 || slot === 5) { // Bunnvegg (Mål)
+            } else if (slot === 4 || slot === 5) {
                 let startX = slot === 5 ? x1 : x1 + sectionWidth;
-                let sectionCenter = startX + sectionWidth / 2;
-                gx = sectionCenter + (p.x * (sectionWidth / 2 - 30));
-                gy = y2 + (p.y * 45); 
-                goalStartX = sectionCenter - goalSizeHalf; 
-                goalEndX = sectionCenter + goalSizeHalf;
-
+                goalStartX = startX + sectionWidth/2 - goalSizeHalf; 
+                goalEndX = startX + sectionWidth/2 + goalSize/2;
                 if (puck.y + puck.radius > y2 && puck.x >= goalStartX && puck.x <= goalEndX) {
-                    p.score -= 1;
+                    activePlayer.score -= 1;
                     resetPuck();
                 }
-            }
-
-            p.absX = gx;
-            p.absY = gy;
-
-            let dx = puck.x - gx;
-            let dy = puck.y - gy;
-            let distance = Math.sqrt(dx * dx + dy * dy);
-            let minDist = puck.radius + p.radius;
-
-            if (distance < minDist) {
-                let nx = dx / distance;
-                let ny = dy / distance;
-                let overlap = minDist - distance;
-                puck.x += nx * overlap;
-                puck.y += ny * overlap;
-
-                let dot = puck.vx * nx + puck.vy * ny;
-                puck.vx = (puck.vx - 2 * dot * nx) + (p.vx * 12);
-                puck.vy = (puck.vy - 2 * dot * ny) + (p.vy * 12);
             }
         } else {
-            // HELT SOLID VEGG der det ikke er noen spiller (ingen mål/reset)
-            if (slot === 0) {
-                if (puck.x - puck.radius <= x1) {
-                    puck.vx *= -1;
-                    puck.x = x1 + puck.radius;
-                }
-            }
-            else if (slot === 3) {
-                if (puck.x + puck.radius >= x2) {
-                    puck.vx *= -1;
-                    puck.x = x2 - puck.radius;
-                }
-            }
-            else if (slot === 1 || slot === 2) {
+            // Solid vegg der det ikke er noen spiller
+            if (slot === 0 && puck.x - puck.radius <= x1) { puck.vx *= -1; puck.x = x1 + puck.radius; }
+            else if (slot === 3 && puck.x + puck.radius >= x2) { puck.vx *= -1; puck.x = x2 - puck.radius; }
+            else if ((slot === 1 || slot === 2) && puck.y - puck.radius <= y1) {
                 let startX = slot === 1 ? x1 : x1 + sectionWidth;
-                if (puck.y - puck.radius <= y1 && puck.x >= startX && puck.x <= startX + sectionWidth) {
-                    puck.vy *= -1;
-                    puck.y = y1 + puck.radius;
-                }
+                if (puck.x >= startX && puck.x <= startX + sectionWidth) { puck.vy *= -1; puck.y = y1 + puck.radius; }
             }
-            else if (slot === 4 || slot === 5) {
+            else if ((slot === 4 || slot === 5) && puck.y + puck.radius >= y2) {
                 let startX = slot === 5 ? x1 : x1 + sectionWidth;
-                if (puck.y + puck.radius >= y2 && puck.x >= startX && puck.x <= startX + sectionWidth) {
-                    puck.vy *= -1;
-                    puck.y = y2 - puck.radius;
-                }
+                if (puck.x >= startX && puck.x <= startX + sectionWidth) { puck.vy *= -1; puck.y = y2 - puck.radius; }
             }
+        }
+    }
+
+    // Standard kollisjon for spillere (brikker som dytter pucken)
+    for (let id in players) {
+        let p = players[id];
+        let dx = puck.x - p.x;
+        let dy = puck.y - p.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+        let minDist = puck.radius + p.radius;
+
+        if (distance < minDist) {
+            let nx = dx / distance;
+            let ny = dy / distance;
+            let overlap = minDist - distance;
+            puck.x += nx * overlap;
+            puck.y += ny * overlap;
+
+            let dot = puck.vx * nx + puck.vy * ny;
+            puck.vx = (puck.vx - 2 * dot * nx) * 1.1;
+            puck.vy = (puck.vy - 2 * dot * ny) * 1.1;
         }
     }
 
